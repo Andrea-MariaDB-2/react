@@ -8,7 +8,13 @@
  */
 
 import type {ReactLane, ReactMeasure, ReactProfilerData} from '../types';
-import type {Interaction, MouseMoveInteraction, Rect, Size} from '../view-base';
+import type {
+  Interaction,
+  IntrinsicSize,
+  MouseMoveInteraction,
+  Rect,
+  ViewRefs,
+} from '../view-base';
 
 import {
   durationToWidth,
@@ -28,6 +34,7 @@ import {COLORS, BORDER_SIZE, REACT_MEASURE_HEIGHT} from './constants';
 import {REACT_TOTAL_NUM_LANES} from '../constants';
 
 const REACT_LANE_HEIGHT = REACT_MEASURE_HEIGHT + BORDER_SIZE;
+const MAX_ROWS_TO_SHOW_INITIALLY = 5;
 
 function getMeasuresForLane(
   allMeasures: ReactMeasure[],
@@ -38,7 +45,7 @@ function getMeasuresForLane(
 
 export class ReactMeasuresView extends View {
   _profilerData: ReactProfilerData;
-  _intrinsicSize: Size;
+  _intrinsicSize: IntrinsicSize;
 
   _lanesToRender: ReactLane[];
   _laneToMeasures: Map<ReactLane, ReactMeasure[]>;
@@ -71,6 +78,8 @@ export class ReactMeasuresView extends View {
     this._intrinsicSize = {
       width: this._profilerData.duration,
       height: this._lanesToRender.length * REACT_LANE_HEIGHT,
+      hideScrollBarIfLessThanHeight: REACT_LANE_HEIGHT,
+      maxInitialHeight: MAX_ROWS_TO_SHOW_INITIALLY * REACT_LANE_HEIGHT,
     };
   }
 
@@ -126,7 +135,7 @@ export class ReactMeasuresView extends View {
       case 'commit':
         fillStyle = COLORS.REACT_COMMIT;
         hoveredFillStyle = COLORS.REACT_COMMIT_HOVER;
-        groupSelectedFillStyle = COLORS.REACT_COMMIT_SELECTED;
+        groupSelectedFillStyle = COLORS.REACT_COMMIT_HOVER;
         break;
       case 'render-idle':
         // We could render idle time as diagonal hashes.
@@ -134,22 +143,22 @@ export class ReactMeasuresView extends View {
         // color = context.createPattern(getIdlePattern(), 'repeat');
         fillStyle = COLORS.REACT_IDLE;
         hoveredFillStyle = COLORS.REACT_IDLE_HOVER;
-        groupSelectedFillStyle = COLORS.REACT_IDLE_SELECTED;
+        groupSelectedFillStyle = COLORS.REACT_IDLE_HOVER;
         break;
       case 'render':
         fillStyle = COLORS.REACT_RENDER;
         hoveredFillStyle = COLORS.REACT_RENDER_HOVER;
-        groupSelectedFillStyle = COLORS.REACT_RENDER_SELECTED;
+        groupSelectedFillStyle = COLORS.REACT_RENDER_HOVER;
         break;
       case 'layout-effects':
         fillStyle = COLORS.REACT_LAYOUT_EFFECTS;
         hoveredFillStyle = COLORS.REACT_LAYOUT_EFFECTS_HOVER;
-        groupSelectedFillStyle = COLORS.REACT_LAYOUT_EFFECTS_SELECTED;
+        groupSelectedFillStyle = COLORS.REACT_LAYOUT_EFFECTS_HOVER;
         break;
       case 'passive-effects':
         fillStyle = COLORS.REACT_PASSIVE_EFFECTS;
         hoveredFillStyle = COLORS.REACT_PASSIVE_EFFECTS_HOVER;
-        groupSelectedFillStyle = COLORS.REACT_PASSIVE_EFFECTS_SELECTED;
+        groupSelectedFillStyle = COLORS.REACT_PASSIVE_EFFECTS_HOVER;
         break;
       default:
         throw new Error(`Unexpected measure type "${type}"`);
@@ -250,7 +259,7 @@ export class ReactMeasuresView extends View {
   /**
    * @private
    */
-  _handleMouseMove(interaction: MouseMoveInteraction) {
+  _handleMouseMove(interaction: MouseMoveInteraction, viewRefs: ViewRefs) {
     const {
       frame,
       _intrinsicSize,
@@ -300,6 +309,8 @@ export class ReactMeasuresView extends View {
         hoverTimestamp >= timestamp &&
         hoverTimestamp <= timestamp + duration
       ) {
+        this.currentCursor = 'context-menu';
+        viewRefs.hoveredView = this;
         onHover(measure);
         return;
       }
@@ -308,10 +319,10 @@ export class ReactMeasuresView extends View {
     onHover(null);
   }
 
-  handleInteraction(interaction: Interaction) {
+  handleInteraction(interaction: Interaction, viewRefs: ViewRefs) {
     switch (interaction.type) {
       case 'mousemove':
-        this._handleMouseMove(interaction);
+        this._handleMouseMove(interaction, viewRefs);
         break;
     }
   }
